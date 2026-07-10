@@ -1,6 +1,7 @@
-flask
-gunicorn
-joblib
-scikit-learn
+streamlit
+pandas
+folium
+streamlit-folium
+osmnx
+networkx
 numpy
-scipy
