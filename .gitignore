@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+.env*
+!.env.example
+pythonlibs/
+npm-cache/
+__pycache__/
+.pytest_cache/
+*.log
+server/data/

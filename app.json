@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "배프맵",
+    "slug": "barrier-free-trip-planner",
+    "scheme": "bftp",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bftp.app"
+    },
+    "android": {
+      "package": "com.bftp.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0d9488"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "name": "배프맵"
+    }
+  }
+}
