@@ -24,3 +24,10 @@ Render: Python 웹 서비스, plan free, 빌드 명령 pip install -r server/req
 - 시설 정보·후기·혼잡도·실시간 위치추적은 검증된 데이터가 없어 제공하지 않습니다.
 - OSM: https://www.openstreetmap.org/copyright . 웹 지도는 Leaflet 1.9.4와 OSM 타일을 사용합니다.
 - 무료 Render는 유휴 시 중지되어 첫 요청에 기동 대기가 있습니다. 요금제는 무료로 유지하며 워크스페이스의 사용량 한도가 적용됩니다.
+
+## 배포 도로망 스냅샷
+
+seoul.graphml.gz는 2026-10-25 OpenStreetMap에서 OSMnx walk 방식으로 수집한 중심 37.568,126.982 / 반경 4km 도로망입니다(28,775 노드, 79,630 방향 간선). ODbL: https://www.openstreetmap.org/copyright . 원본 데이터의 접근성 태그 결측은 보완하거나 안전으로 추정하지 않습니다. 빌드·실행은 이 스냅샷을 우선 사용하여 외부 Overpass 접속 장애에 의존하지 않습니다. 데이터 갱신은 별도 재수집이 필요합니다.
+
+웹: https://baefmap-seoul.netlify.app
+API: https://baefmap-api.onrender.com/docs

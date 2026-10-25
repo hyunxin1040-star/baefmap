@@ -4,7 +4,10 @@ import osmnx as ox
 from routing_engine import REGION_CENTER, REGION_RADIUS
 ox.settings.requests_timeout = 180
 p = Path(__file__).parent / "data" / "seoul.graphml"
-if not p.exists():
+snapshot = Path(__file__).resolve().parents[1] / "seoul.graphml.gz"
+if snapshot.exists():
+    print("Using bundled OpenStreetMap snapshot (2026-10-25)")
+elif not p.exists():
     g = ox.graph_from_point(REGION_CENTER, dist=REGION_RADIUS, network_type="walk", simplify=True, retain_all=True)
     p.parent.mkdir(exist_ok=True)
     ox.save_graphml(g,p)

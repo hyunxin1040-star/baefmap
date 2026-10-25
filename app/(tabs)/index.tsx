@@ -51,6 +51,7 @@ export default function PlannerScreen() {
         setOptimizeError('접근 가능한 경로를 찾지 못했어요.');
       }
     } catch (error) {
+      if(ticket!==requestSeq.current) return;
       setOptimizeError(error instanceof Error ? error.message : '경로 계산 중 오류가 발생했어요.');
     } finally {
       setIsOptimizing(false);
@@ -76,7 +77,9 @@ export default function PlannerScreen() {
       return next;
     });
   };
-  const delStop = (sid: number) => setStops((p) => p.filter((s) => s.sid !== sid));
+  const normalizeStops=(next:Stop[]):Stop[]=>{if(next.length&&!next.some(p=>p.role==='start')){const first=next.find(p=>p.role!=='end')??next[0];return next.map(p=>p.sid===first.sid?{...p,role:'start'}:p);}return next;};
+  const delStop=(sid:number)=>setStops(prev=>normalizeStops(prev.filter(p=>p.sid!==sid)));
+  const pickRole=(sid:number,role:'start'|'end')=>setStops(prev=>normalizeStops(prev.map(p=>({...p,role:p.sid===sid?role:p.role===role?'via':p.role}))));
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: palette.bg }]} edges={['top']}>
@@ -93,7 +96,7 @@ export default function PlannerScreen() {
         </View>
         <View style={{ flexDirection: 'row', gap: 6 }}>
           {/* 접근성 프로필: 크게/작게 — 동작함 */}
-          <Pressable accessibilityLabel="글자 크기 전환" onPress={() => cycleScale(textScale, setTextScale)} style={[s.iconBtn, { borderColor: palette.border }]}>
+          <Pressable accessibilityRole="button" accessibilityLabel="글자 크기 전환" onPress={() => cycleScale(textScale, setTextScale)} style={[s.iconBtn, { borderColor: palette.border }]}>
             <Type color={palette.text2} size={18} />
           </Pressable>
           <Pressable accessibilityLabel="화면 테마 전환" onPress={toggle} style={[s.iconBtn, { borderColor: palette.border }]}>
@@ -110,7 +113,7 @@ export default function PlannerScreen() {
         <View style={s.sec}>
           <View style={[s.search, { backgroundColor: palette.surface2, borderColor: palette.border }]}>
             <Search color={palette.text3} size={17} />
-            <TextInput
+            <TextInput accessibilityLabel="장소 검색"
               value={query} onChangeText={setQuery}
               placeholder="관광지, 호텔, 카페 검색" placeholderTextColor={palette.text3}
               style={{ flex: 1, color: palette.text, fontSize: fs(13) }} />
@@ -154,15 +157,15 @@ export default function PlannerScreen() {
           {stops.map((st) => (
             <View key={st.sid} style={[s.stop, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={[s.dot, { backgroundColor: st.role === 'start' ? palette.accent : st.role === 'end' ? palette.danger : 'transparent', borderColor: st.role === 'via' ? palette.text3 : 'transparent' }]} />
-              <Text style={{ flex: 1, color: palette.text, fontSize: fs(12.5), fontWeight: '500' }}>{st.name}</Text>
-              <Pressable disabled={isOptimizing} accessibilityLabel={st.name + ' 출발지 지정'} onPress={()=>setStops(prev=>prev.map(p=>({...p,role:p.sid===st.sid?'start':p.role==='start'?'via':p.role})))}><Text style={{color:palette.accent,fontSize:fs(11)}}>출발</Text></Pressable>
-              <Pressable disabled={isOptimizing} accessibilityLabel={st.name + ' 도착지 지정'} onPress={()=>setStops(prev=>prev.map(p=>({...p,role:p.sid===st.sid?'end':p.role==='end'?'via':p.role})))}><Text style={{color:palette.accent,fontSize:fs(11)}}>도착</Text></Pressable>
+              <Text style={{ flex: 1, color: palette.text, fontSize: fs(12.5), fontWeight: '500' }}>{st.role==='start'?'출발 · ':st.role==='end'?'도착 · ':'경유 · '}{st.name}</Text>
+              <Pressable accessibilityRole="button" disabled={isOptimizing} accessibilityLabel={st.name + ' 출발지 지정'} onPress={()=>pickRole(st.sid,'start')}><Text style={{color:palette.accent,fontSize:fs(11)}}>출발</Text></Pressable>
+              <Pressable disabled={isOptimizing} accessibilityLabel={st.name + ' 도착지 지정'} onPress={()=>pickRole(st.sid,'end')}><Text style={{color:palette.accent,fontSize:fs(11)}}>도착</Text></Pressable>
               {(
                 <Pressable disabled={isOptimizing} accessibilityLabel={st.name + ' 삭제'} onPress={() => delStop(st.sid)}><X color={palette.text3} size={15} /></Pressable>
               )}
             </View>
           ))}
-          <Pressable
+          <Pressable accessibilityRole="button"
             style={[s.optimize, { backgroundColor: palette.accentSoft, opacity: isOptimizing ? 0.6 : 1 }]}
             onPress={handleOptimize}
             disabled={isOptimizing || stops.length < 2}

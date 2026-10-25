@@ -1113,7 +1113,8 @@ _REGION_LOCK = Lock()
 def regional_graph():
     with _REGION_LOCK:
         if "region" not in _GRAPH_CACHE:
-            cache = Path(__file__).parent / "data" / "seoul.graphml"
+            snapshot = Path(__file__).resolve().parents[1] / "seoul.graphml.gz"
+            cache = snapshot if snapshot.exists() else Path(__file__).parent / "data" / "seoul.graphml"
             if cache.exists():
                 graph = ox.load_graphml(cache)
             else:
