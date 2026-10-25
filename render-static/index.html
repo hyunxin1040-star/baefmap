@@ -311,9 +311,19 @@ function getTransitOptions(targetId){
 function transportCards(targetId){
  return getTransitOptions(targetId).map(x=>`<div class="transport-card ${x.recommended?'recommended':''}"><div class="transport-head"><strong>${x.kind} · ${x.title}</strong>${x.recommended?'<span class="transport-badge">추천</span>':''}</div><div class="transport-steps">${x.steps.map(s=>`<div>• ${s}</div>`).join('')}</div><div class="transport-meta"><span>${x.time}</span><span>도보 구간 ${x.walk}</span></div><div class="place-meta" style="margin-top:7px">${x.note}</div></div>`).join('')
 }
+function getOptimizedOrder(ids){
+ const set=new Set(ids);
+ // Demo pairwise-cost outcome: same destinations can yield different orders by mobility profile.
+ if(ids.length===3 && set.has('ddp') && set.has('craft') && set.has('gyeongbok')){
+   if(currentProfile==='manual' || currentProfile==='power') return ['ddp','craft','gyeongbok'];
+   if(currentProfile==='limited' || currentProfile==='pregnant') return ['ddp','gyeongbok','craft'];
+ }
+ // Fallback for other combinations: current profile's route cost from origin.
+ return [...ids].sort((a,b)=>getRoute(a).km-getRoute(b).km);
+}
 function showResult(){
  const el=document.getElementById('routeResult'),profile=getProfile();
- let order=[...selected].sort((a,b)=>getRoute(a).km-getRoute(b).km);
+ let order=getOptimizedOrder(selected);
  let totalKm=0,totalMin=0,legs=[];
  order.forEach((id,idx)=>{
    const r=getRoute(id);
