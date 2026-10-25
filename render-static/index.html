@@ -25,7 +25,7 @@ header{height:58px;background:#fff;border-bottom:1px solid var(--line);display:f
 .map-badge{z-index:5}
 select,option,input,button{font-family:inherit!important;font-weight:inherit}
 .search-results-title{font-size:12px;color:var(--muted);margin:8px 0 6px}
-.transport-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:12px}
+.transport-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
 .transport-card{border:1px solid var(--line);border-radius:13px;padding:12px;background:#fff}
 .transport-card.recommended{border-color:#79cfc7;background:#f1fbf9}
 .transport-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
@@ -258,12 +258,91 @@ function addPlace(id){if(!selected.includes(id))selected.push(id);renderSelectio
 function removePlace(id){selected=selected.filter(x=>x!==id);renderSelection()}
 function renderSelection(){const el=document.getElementById('routeSelection');el.innerHTML=`<div class="route-item"><span class="route-dot"></span><strong>현재 위치</strong></div>`+selected.map(id=>`<div class="route-item"><span class="route-dot"></span><strong>${places[id].name}</strong><span class="place-meta">${getRoute(id).km.toFixed(1)}km</span><button class="route-remove" onclick="removePlace('${id}')">×</button></div>`).join('');document.getElementById('optimizeBtn').disabled=selected.length===0;document.getElementById('routeResult').style.display='none';hideRoutes()}
 function optimize(){if(!selected.length)return;const loading=document.getElementById('loading');loading.style.display='block';setTimeout(()=>{loading.style.display='none';showResult();showRoute()},900)}
-function transportCards(){return (ddpTransit[currentProfile]||[]).map(x=>`<div class="transport-card ${x.recommended?'recommended':''}"><div class="transport-head"><strong>${x.kind} · ${x.title}</strong>${x.recommended?'<span class="transport-badge">추천</span>':''}</div><div class="transport-steps">${x.steps.map(s=>`<div>• ${s}</div>`).join('')}</div><div class="transport-meta"><span>${x.time}</span><span>${x.walk}</span></div><div class="place-meta" style="margin-top:7px">${x.note}</div></div>`).join('')}
+function getTransitOptions(targetId){
+ const p=places[targetId],r=getRoute(targetId),km=r.km;
+ const walkTime=Math.max(8,Math.round(km/3.2*60));
+ const subwayTime=Math.max(18,Math.round(16+km*2.7));
+ const busTime=Math.max(16,Math.round(12+km*3.1));
+ const subwayWalk=Math.max(.35,Math.min(1.1,km*.14));
+ const busWalk=Math.max(.30,Math.min(1.0,km*.12));
+ let recommend='도보';
+ if(currentProfile==='manual') recommend=km>=2.4?'지하철':(km>=1.4?'저상버스':'도보');
+ if(currentProfile==='power') recommend=km>=1.5?'저상버스':'도보';
+ if(currentProfile==='limited') recommend=km>=2.0?'지하철':(km>=1.0?'저상버스':'도보');
+ if(currentProfile==='pregnant') recommend=km>=3.0?'지하철':(km>=1.5?'저상버스':'도보');
+
+ const profileNote={
+   manual:'계단을 제외하고 엘리베이터·무단차 승하차를 우선합니다.',
+   power:'넓은 승하차 공간과 낮은 턱, 저상버스를 우선합니다.',
+   limited:'총 보행거리와 환승 시 걷는 구간을 줄입니다.',
+   pregnant:'긴 보행과 계단을 줄이고 엘리베이터 이용을 우선합니다.'
+ }[currentProfile];
+
+ return [
+  {
+   kind:'도보',
+   recommended:recommend==='도보',
+   title:'접근성 우선 보행 경로',
+   time:walkTime+'분',
+   walk:km.toFixed(2)+'km',
+   steps:['현재 위치 → 접근성 조건을 반영한 보행 경로',p.name],
+   note:r.explain
+  },
+  {
+   kind:'지하철',
+   recommended:recommend==='지하철',
+   title:'엘리베이터 우선 지하철 경로',
+   time:subwayTime+'분',
+   walk:subwayWalk.toFixed(2)+'km',
+   steps:['현재 위치 → 엘리베이터 이용 가능한 역사까지 접근','엘리베이터 동선을 우선해 지하철 이동','목적지 인근 역 → '+p.name],
+   note:profileNote
+  },
+  {
+   kind:'저상버스',
+   recommended:recommend==='저상버스',
+   title:'저상버스 우선 경로',
+   time:busTime+'분',
+   walk:busWalk.toFixed(2)+'km',
+   steps:['현재 위치 → 저상버스 이용 가능한 정류장','저상버스 승하차가 가능한 구간을 우선해 이동','하차 정류장 → '+p.name],
+   note:profileNote
+  }
+ ];
+}
+function transportCards(targetId){
+ return getTransitOptions(targetId).map(x=>`<div class="transport-card ${x.recommended?'recommended':''}"><div class="transport-head"><strong>${x.kind} · ${x.title}</strong>${x.recommended?'<span class="transport-badge">추천</span>':''}</div><div class="transport-steps">${x.steps.map(s=>`<div>• ${s}</div>`).join('')}</div><div class="transport-meta"><span>${x.time}</span><span>도보 구간 ${x.walk}</span></div><div class="place-meta" style="margin-top:7px">${x.note}</div></div>`).join('')
+}
 function showResult(){
- const el=document.getElementById('routeResult'),profile=getProfile();let order=[...selected].sort((a,b)=>getRoute(a).km-getRoute(b).km);let totalKm=0,totalMin=0,legs=[];
- order.forEach((id,idx)=>{const r=getRoute(id);if(idx===0){totalKm+=r.km;totalMin+=r.minutes;legs.push(`현재 위치 → ${places[id].name} · ${r.minutes}분 · ${r.km.toFixed(2)}km`)}else{const prev=order[idx-1],legKm=Math.max(.5,Math.abs(getRoute(id).km-getRoute(prev).km)+.35),legMin=Math.round(legKm/3.2*60);totalKm+=legKm;totalMin+=legMin;legs.push(`${places[prev].name} → ${places[id].name} · ${legMin}분 · ${legKm.toFixed(2)}km`)}});
- const focus=getRoute(order[order.length-1]),hasDDP=order.includes('ddp');
- el.style.display='block';el.innerHTML=`<h3>프로필 기준 추천 동선</h3><div class="result-order">현재 위치 → ${order.map(id=>places[id].name).join(' → ')}</div><div class="result-metrics"><div class="metric"><span>총 시간</span><strong>${hasDDP&&order.length===1?ddpTransit[currentProfile][0].time:totalMin+'분'}</strong></div><div class="metric"><span>도보 이동</span><strong>${hasDDP&&order.length===1?ddpTransit[currentProfile][0].walk.replace('도보 ',''):totalKm.toFixed(2)+'km'}</strong></div><div class="metric"><span>적용 프로필</span><strong style="font-size:13px">${profile.name}</strong></div></div>${hasDDP?`<div class="transport-options">${transportCards()}</div>`:`<div class="legs">${legs.map((x,i)=>`<div class="leg">${i+1}. ${x}</div>`).join('')}</div>`}<div class="route-explain">${focus.explain}</div>`
+ const el=document.getElementById('routeResult'),profile=getProfile();
+ let order=[...selected].sort((a,b)=>getRoute(a).km-getRoute(b).km);
+ let totalKm=0,totalMin=0,legs=[];
+ order.forEach((id,idx)=>{
+   const r=getRoute(id);
+   if(idx===0){
+     totalKm+=r.km;totalMin+=r.minutes;
+     legs.push(`현재 위치 → ${places[id].name} · ${r.minutes}분 · ${r.km.toFixed(2)}km`)
+   }else{
+     const prev=order[idx-1],legKm=Math.max(.5,Math.abs(getRoute(id).km-getRoute(prev).km)+.35),legMin=Math.round(legKm/3.2*60);
+     totalKm+=legKm;totalMin+=legMin;
+     legs.push(`${places[prev].name} → ${places[id].name} · ${legMin}분 · ${legKm.toFixed(2)}km`)
+   }
+ });
+ const target=order[order.length-1],focus=getRoute(target);
+ const options=getTransitOptions(target);
+ const recommendedMode=options.find(x=>x.recommended)||options[0];
+ const displayTime=order.length===1?recommendedMode.time:totalMin+'분';
+ const displayWalk=order.length===1?recommendedMode.walk:Math.min(totalKm,2.5).toFixed(2)+'km';
+ el.style.display='block';
+ el.innerHTML=`<h3>프로필 기준 추천 동선</h3>
+ <div class="result-order">현재 위치 → ${order.map(id=>places[id].name).join(' → ')}</div>
+ <div class="result-metrics">
+   <div class="metric"><span>총 시간</span><strong>${displayTime}</strong></div>
+   <div class="metric"><span>도보 구간</span><strong>${displayWalk}</strong></div>
+   <div class="metric"><span>추천 이동수단</span><strong style="font-size:13px">${recommendedMode.kind}</strong></div>
+ </div>
+ <div class="route-explain">적용 프로필: ${profile.name} · ${focus.explain}</div>
+ <div class="label" style="margin-top:14px">이동수단별 경로</div>
+ <div class="transport-options">${transportCards(target)}</div>
+ ${order.length>1?`<div class="label" style="margin-top:14px">방문 순서별 구간</div><div class="legs">${legs.map((x,i)=>`<div class="leg">${i+1}. ${x}</div>`).join('')}</div>`:''}`
 }
 function hideRoutes(){
  const old=document.querySelector('#liveMap .route-overlay');if(old)old.remove();demoRouteLayer=null;
